@@ -1,0 +1,5 @@
+*.scala text eol=lf
+*.sbt   text eol=lf
+*.json  text eol=lf
+*.svg   text eol=lf
+*.png   binary
