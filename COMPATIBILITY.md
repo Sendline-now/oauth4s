@@ -31,18 +31,18 @@
 
 | | Version |
 | --- | --- |
-| Scala | `3.9.0` (built on the LTS); the `it` module compiles on `3.10.0` against it |
+| Scala | `3.9.0` (built on the LTS); the `it` module compiles on `3.10.1` against it |
 | JDK, to run | 17 or newer: every module is compiled to Java 17 class files. `oauth4s-rapid` needs 21, because rapid runs on virtual threads, and `oauth4s-kyo` needs 25, because Kyo ships Java 25 class files |
 | JDK, to build | 25 or newer, checked when the build loads |
 | cats-effect | `3.7.1` |
 | ZIO | `2.1.27` |
 | Kyo | `1.0.0-RC7` |
-| rapid | `2.9.9` |
-| http4s | `0.23.38` (`http4s-client` only) |
-| sttp client | `4.1.1` |
+| rapid | `2.9.10` |
+| http4s | `0.23.39` (`http4s-client` only) |
+| sttp client | `4.1.3` |
 | circe | `0.14.17` |
-| zio-json | `1.1.1` |
-| jsoniter-scala | `2.42.3` (`jsoniter-scala-core` only; the macros are yours to add) |
+| zio-json | `1.1.3` |
+| jsoniter-scala | `2.43.0` (`jsoniter-scala-core` only; the macros are yours to add) |
 
 `oauth4s-core`, `oauth4s-jwt`, `oauth4s-oidc`, `oauth4s-providers`, `oauth4s-http-jdk` and `oauth4s-testkit` have no
 dependency outside the JDK and the Scala library. Cryptography is `java.security` and `javax.crypto`; no provider is
