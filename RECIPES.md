@@ -41,9 +41,10 @@ object SignIn:
 callback whose state was never issued finds nothing either, which is the CSRF check done one step earlier.
 
 In a service with more than one instance the map is a table or a cache with an expiry of a few minutes, or the flow
-rides in an encrypted, `HttpOnly`, `SameSite=Lax` cookie. Its five fields are strings: `url`, `state.value`,
-`redirectUri.value`, `verifier.map(_.value)` and `nonce.map(_.value)`. Whatever holds it must be readable only by the
-browser that started the flow, because the verifier is what makes a stolen code useless.
+rides in an encrypted, `HttpOnly`, `SameSite=Lax` cookie. `flow.toFields` gives the flow as a `Map[String, String]`
+to put in a session, a Redis hash or a cookie. `AuthorizationFlow.fromFields(fields)` gives it back, or an `OAuthError`
+when the stored fields lack the state or hold a verifier PKCE would not accept. Whatever holds the flow must be
+readable only by the browser that started it, because the verifier is what makes a stolen code useless.
 
 ## Calling an API with a token that stays fresh
 

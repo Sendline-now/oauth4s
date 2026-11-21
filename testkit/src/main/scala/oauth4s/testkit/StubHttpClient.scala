@@ -29,6 +29,9 @@ object StubHttpClient:
 
     apply(request => F.pure(table.getOrElse(request.url.takeWhile(_ != '?'), NotFound)))
 
+  def routesBy[F[*]](route: PartialFunction[HttpRequest, HttpResponse])(using F: Effect[F]): StubHttpClient[F] =
+    apply(request => F.delay(route.applyOrElse(request, _ => NotFound)))
+
   def sequence[F[*]](responses: HttpResponse*)(using F: Effect[F]): StubHttpClient[F] =
     val remaining = AtomicReference(responses.toVector)
 

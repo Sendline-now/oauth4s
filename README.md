@@ -77,10 +77,10 @@ Runs on JDK 17 or newer. `oauth4s-rapid` needs 21 and `oauth4s-kyo` needs 25, li
 
 ```scala
 libraryDependencies ++= Seq(
-  "now.sendline" %% "oauth4s-cats"      % "0.1.0", // core + cats-effect
-  "now.sendline" %% "oauth4s-http-jdk"  % "0.1.0", // java.net.http: no HTTP library to add
-  "now.sendline" %% "oauth4s-providers" % "0.1.0", // Google, Microsoft, Apple, …; brings oidc and jwt
-  "now.sendline" %% "oauth4s-testkit"   % "0.1.0" % Test,
+  "now.sendline" %% "oauth4s-cats"      % "0.1.1", // core + cats-effect
+  "now.sendline" %% "oauth4s-http-jdk"  % "0.1.1", // java.net.http: no HTTP library to add
+  "now.sendline" %% "oauth4s-providers" % "0.1.1", // Google, Microsoft, Apple, …; brings oidc and jwt
+  "now.sendline" %% "oauth4s-testkit"   % "0.1.1" % Test,
 )
 ```
 
@@ -384,6 +384,21 @@ A provider is the endpoints, the default scope and everything the provider does 
 | `VkId` | OAuth 2.1 | S256, mandatory | none: a public client | `user_info`, by `POST` | with the `email` scope |
 | `X` | OAuth 2.0 + PKCE | S256, mandatory | Basic, or none for a public client | `/2/users/me` | with the `users.email` scope |
 
+What `login` puts in the `UserProfile`. The `id` is the key to store an account under, and the only one a provider
+promises to keep. Link a new sign-in to an existing account by its email only when `emailVerified` is `Some(true)`. A
+`None` means the provider does not say, and an address it does not vouch for may belong to someone else.
+
+| Provider | `id` | `id` stays the same | `email` | `emailVerified` |
+| --- | --- | --- | --- | --- |
+| `Google` | `sub` | for the Google account | with the `email` scope | the `email_verified` claim |
+| `Microsoft` | `sub` | for the account, and different in each application | the `email` claim | `None`: Microsoft does not verify it, and in a work tenant an administrator sets it |
+| `Apple` | `sub` | for the Apple ID, within one developer team | on every sign-in, may be a private relay address | the `email_verified` claim |
+| `Facebook` | `id` | for the user, and different in each application | when the user has one | `None` |
+| `Instagram` | `user_id` | for the account, and different in each application | never | `None` |
+| `Strava` | the athlete's `id` | for the athlete | never | `None` |
+| `VkId` | `user_id` | for the VK account | with the `email` scope | `None`: VK ID's `user_info` carries no verification flag, so treat the address as unconfirmed |
+| `X` | `id` | for the account | `confirmed_email`, with the `users.email` scope | `Some(true)` when there is one, since X only returns a confirmed address |
+
 ### Google
 
 ```scala
@@ -561,7 +576,13 @@ def fromFile(pem: String): Either[JwtError, PrivateKey] =
 
 ## Errors
 
-Every operation fails in `F` with an `OAuthException` whose `error` is an `OAuthError`:
+Every failure the library raises in `F` is an `OAuth4sException`, and there are two of them. An `OAuthException`
+carries an `OAuthError`: the server refused, answered something unreadable or could not be reached. A `JwtException`
+carries a `JwtError`: an ID token or a JWT did not verify. `Provider.login` and `OidcClient.complete` raise either, so a
+sign-in endpoint that turns refusals into a 4xx catches `OAuth4sException`. Catching only `OAuthException` there would
+let a forged or foreign ID token through to a 500.
+
+An `OAuthException` is matched on its `error`:
 
 ```scala
 def renewed(client: OAuthClient[IO], token: RefreshToken): IO[Option[TokenResponse]] =
@@ -578,12 +599,12 @@ def renewed(client: OAuthClient[IO], token: RefreshToken): IO[Option[TokenRespon
 | `Rejected(code, description, uri)` | the server answered with an error document, or the callback carried one |
 | `UnexpectedStatus(status, body)` | a status that is not `2xx` with a body that is not an error document |
 | `MalformedResponse(reason)` | a `2xx` that is not JSON, or has a field of the wrong shape |
-| `MissingField(name)` | a response without something the protocol requires, such as `access_token` |
+| `MissingField(name)` | a response without something the protocol requires, such as `access_token`, or stored fields given to `AuthorizationFlow.fromFields` without `state` |
 | `MissingEndpoint(name)` | the client was asked for something its configuration has no endpoint for |
 | `StateMismatch(expected, received)` | the callback is not this flow's |
 | `IssuerMismatch(expected, received)` | the callback or the discovery document speaks for another issuer |
 | `InvalidUrl(url, reason)` | an endpoint in a discovery document cannot be used |
-| `InvalidCodeVerifier(reason)` | `CodeVerifier.parse` was given something RFC 7636 does not allow |
+| `InvalidCodeVerifier(reason)` | `CodeVerifier.parse` or `AuthorizationFlow.fromFields` was given something RFC 7636 does not allow |
 | `Transport(cause)` | the HTTP client threw; `getCause` of the exception is that cause |
 
 `ErrorCode` has the codes of RFC 6749, the device grant and OpenID Connect — `InvalidGrant`, `InvalidClient`,
@@ -591,7 +612,7 @@ def renewed(client: OAuthClient[IO], token: RefreshToken): IO[Option[TokenRespon
 and `Other(raw)` for one a provider made up. An error document is read whatever its status: VK ID sends errors with
 HTTP 200, Facebook nests the error in an object, Instagram names the fields differently, and all three are `Rejected`.
 
-ID token and JWT verification fail with a `JwtException` carrying a `JwtError`:
+A `JwtException` is matched on its `JwtError`, before the `OAuthException` case:
 
 ```scala
 def signedIn(oidc: OidcClient[IO], flow: AuthorizationFlow, callback: AuthorizationCallback): IO[Either[String, OidcTokens]] =
@@ -775,6 +796,10 @@ val failing: StubHttpClient[IO]  = StubHttpClient.failing[IO](java.net.ConnectEx
 val inOrder: StubHttpClient[IO]  = StubHttpClient.sequence[IO](HttpResponse.json("""{"error":"slow_down"}""", 400), HttpResponse.json("""{"access_token":"a"}"""))
 val computed: StubHttpClient[IO] = StubHttpClient[IO](request => IO.pure(HttpResponse.json(s"""{"asked":"${request.url}"}""")))
 ```
+
+`StubHttpClient.routesBy[IO] { case request if … => … }` routes with a partial function. It runs as each request
+arrives, so a route can answer from something the test learned later, such as the nonce of a flow it has just started.
+Any request the function does not route gets a 404.
 
 An issuer that signs ID tokens with a key of its own, for testing what your code does with a token:
 
