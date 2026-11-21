@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-21
+
+Binary compatible with 0.1.0. Everything below comes from wiring 0.1.0 into a real backend.
+
+### Added
+
+- `OAuth4sException`, the common parent of `OAuthException` and `JwtException`. A refused ID token raised from
+  `Provider.login` or `OidcClient.complete` is now caught by the same handler as a refused grant. The README lists what
+  each raises.
+- `AuthorizationFlow.toFields` and `AuthorizationFlow.fromFields`, to keep a flow in a session, a key store or a cookie
+  between `authorize` and the callback.
+- `ClientId.parse` and `ClientSecret.parse`, which give `None` for an empty value from the environment instead of
+  throwing.
+- `StubHttpClient.routesBy`, a stub routed by a partial function that runs as each request arrives.
+- A README table of what each provider's `UserProfile` carries: which `id` to key accounts by, whether there is an
+  email, and whether the provider vouches for it.
+
+### Changed
+
+- The message of `OAuthError.MissingField` no longer says "from the response", since stored flow fields report it
+  too.
+
 ## [0.1.0] - 2026-11-21
 
 The first release.
@@ -44,4 +66,5 @@ The first release.
   the recipes, and runs the recipes; examples for cats-effect, ZIO, `Try` and the providers; JMH benchmarks of parsing
   and ID token verification.
 
+[0.1.1]: https://github.com/sendline-now/oauth4s/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sendline-now/oauth4s/releases/tag/v0.1.0

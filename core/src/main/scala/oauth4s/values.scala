@@ -9,6 +9,8 @@ object ClientId:
     require(value.nonEmpty, "a client id must not be empty")
     value
 
+  def parse(value: String): Option[ClientId] = Option.when(value.nonEmpty)(value)
+
   extension (id: ClientId) inline def value: String = id
 
 opaque type ClientSecret = String
@@ -17,6 +19,8 @@ object ClientSecret:
   def apply(value: String): ClientSecret =
     require(value.nonEmpty, "a client secret must not be empty — a client without one authenticates as ClientAuthentication.Public")
     value
+
+  def parse(value: String): Option[ClientSecret] = Option.when(value.nonEmpty)(value)
 
   extension (secret: ClientSecret) inline def value: String = secret
 

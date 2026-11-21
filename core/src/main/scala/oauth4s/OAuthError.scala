@@ -69,7 +69,7 @@ enum OAuthError:
       case Rejected(code, description, _)     => s"the server answered ${code.value}${description.fold("")(text => s": $text")}"
       case UnexpectedStatus(status, body)     => s"the server answered HTTP $status${Option(body).filter(_.nonEmpty).fold("")(text => s": $text")}"
       case MalformedResponse(reason)          => s"the response is malformed: $reason"
-      case MissingField(name)                 => s"'$name' is missing from the response"
+      case MissingField(name)                 => s"'$name' is missing"
       case MissingEndpoint(name)              => s"this client has no $name endpoint; give it one in Endpoints, or build the client from the server's metadata"
       case StateMismatch(expected, received)  =>
         s"the callback carries ${received.fold("no state")(state => s"state '${state.value}'")} but the flow was started with '${expected.value}'"
@@ -88,7 +88,9 @@ enum OAuthError:
 object OAuthError:
   def rejected(code: ErrorCode, description: String): OAuthError = Rejected(code, Some(description), None)
 
-final class OAuthException(val error: OAuthError) extends RuntimeException(
+abstract class OAuth4sException(message: String, cause: Throwable) extends RuntimeException(message, cause)
+
+final class OAuthException(val error: OAuthError) extends OAuth4sException(
       error.message,
       error match
         case OAuthError.Transport(cause) => cause

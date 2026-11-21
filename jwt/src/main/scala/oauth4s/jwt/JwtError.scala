@@ -2,6 +2,8 @@ package oauth4s.jwt
 
 import java.time.Instant
 
+import oauth4s.OAuth4sException
+
 enum JwtError:
   case Malformed(reason: String)
   case UnsupportedAlgorithm(algorithm: String)
@@ -38,4 +40,4 @@ enum JwtError:
 
   def toThrowable: JwtException = JwtException(this)
 
-final class JwtException(val error: JwtError) extends RuntimeException(error.message)
+final class JwtException(val error: JwtError) extends OAuth4sException(error.message, null)

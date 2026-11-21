@@ -81,6 +81,12 @@ final class OidcClientSpec extends AnyWordSpec, Matchers:
     "fail when the token response carries no ID token at all" in {
       completed(_ => None).failed.map { case error: OAuthException => error.error }.get shouldBe OAuthError.MissingField("id_token")
     }
+
+    "fail with exceptions that one handler for OAuth4sException catches, whether the server or the ID token refused" in {
+      val refusals = List(completed(_ => None), completed(_ => Some(Identity.idToken(ClientId, "user-1", ManualTime.Start, "nonce" -> Json.str("replayed")).value)))
+
+      refusals.map(_.failed.map { case _: OAuth4sException => true }.getOrElse(false)) shouldBe List(true, true)
+    }
   }
 
   "userInfo" should {
@@ -95,7 +101,7 @@ final class OidcClientSpec extends AnyWordSpec, Matchers:
         Some("Ann"),
         Some("https://cdn.example.com/a.png"),
         Some("Bearer access-1"),
-        "'sub' is missing from the response",
+        "'sub' is missing",
       )
     }
   }
@@ -123,7 +129,7 @@ final class OidcClientSpec extends AnyWordSpec, Matchers:
 
       (discovered(document).map(_.config.client.endpoints.userInfo.map(_.value)).get, discovered(keyless).failed.map(_.getMessage).get) shouldBe (
         Some("https://auth.example.com/userinfo"),
-        "'jwks_uri' is missing from the response",
+        "'jwks_uri' is missing",
       )
     }
   }

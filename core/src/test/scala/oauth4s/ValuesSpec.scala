@@ -79,6 +79,44 @@ final class ValuesSpec extends AnyWordSpec, Matchers:
     }
   }
 
+  "a client id or secret read from configuration" should {
+    "be absent when the value is empty, instead of throwing" in {
+      (ClientId.parse("app").map(_.value), ClientId.parse(""), ClientSecret.parse("s3cret").map(_.value), ClientSecret.parse("")) shouldBe (
+        Some("app"),
+        None,
+        Some("s3cret"),
+        None,
+      )
+    }
+  }
+
+  "a flow" should {
+    val verifier = CodeVerifier.parse("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk").toOption
+    val flow     = AuthorizationFlow("https://auth.example.com/authorize?state=s1", State("s1"), RedirectUri("https://app.example.com/cb"), verifier, Some(Nonce("n1")))
+
+    "come back the same from the strings it is stored as, with or without a verifier and a nonce" in {
+      val bare = flow.copy(verifier = None, nonce = None)
+
+      (AuthorizationFlow.fromFields(flow.toFields), AuthorizationFlow.fromFields(bare.toFields), bare.toFields.keySet) shouldBe (
+        Right(flow),
+        Right(bare),
+        Set("url", "state", "redirect_uri"),
+      )
+    }
+
+    "refuse stored fields that lack the state or carry a verifier PKCE would not accept" in {
+      (
+        AuthorizationFlow.fromFields(flow.toFields - "state"),
+        AuthorizationFlow.fromFields(flow.toFields.updated("state", "")),
+        AuthorizationFlow.fromFields(flow.toFields.updated("code_verifier", "short")),
+      ) shouldBe (
+        Left(OAuthError.MissingField("state")),
+        Left(OAuthError.MissingField("state")),
+        Left(OAuthError.InvalidCodeVerifier("it must be between 43 and 128 characters long")),
+      )
+    }
+  }
+
   "a callback" should {
     "be read from a redirected URL, ignoring the fragment, or from a form_post body" in {
       val fromUrl  = AuthorizationCallback.fromUrl("https://app.example.com/cb?code=a%20b&state=s1&iss=https%3A%2F%2Fauth.example.com#_")

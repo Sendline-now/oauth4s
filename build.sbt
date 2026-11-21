@@ -1,7 +1,7 @@
 import Dependencies.Versions
 import com.typesafe.tools.mima.plugin.MimaKeys.mimaPreviousArtifacts
 
-lazy val binaryCompatibleWith = Set.empty[String]
+lazy val binaryCompatibleWith = Set("0.1.0")
 
 lazy val requiredJdk = 25
 
@@ -33,7 +33,7 @@ lazy val commonSettings = Seq(
   organizationHomepage   := Some(uri("https://oss.sendline.now/")),
   homepage               := Some(uri("https://oss.sendline.now/oauth4s/")),
   description            := "OAuth 2.0 / 2.1 and OpenID Connect client for Scala 3: any runtime, any JSON codec, any HTTP client",
-  version                := "0.1.0",
+  version                := "0.1.1",
   versionScheme          := Some("semver-spec"),
   scalaVersion           := Versions.scala3,
   parallelExecution      := true,

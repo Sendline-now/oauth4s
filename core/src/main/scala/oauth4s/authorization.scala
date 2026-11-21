@@ -52,7 +52,32 @@ final case class AuthorizationFlow(
     redirectUri: RedirectUri,
     verifier: Option[CodeVerifier],
     nonce: Option[Nonce],
-)
+):
+  def toFields: Map[String, String] =
+    Map(
+      AuthorizationFlow.UrlField         -> url,
+      AuthorizationFlow.StateField       -> state.value,
+      AuthorizationFlow.RedirectUriField -> redirectUri.value,
+    ) ++ verifier.map(AuthorizationFlow.VerifierField -> _.value) ++ nonce.map(AuthorizationFlow.NonceField -> _.value)
+
+object AuthorizationFlow:
+  private val UrlField         = "url"
+  private val StateField       = "state"
+  private val RedirectUriField = "redirect_uri"
+  private val VerifierField    = "code_verifier"
+  private val NonceField       = "nonce"
+
+  def fromFields(fields: Map[String, String]): Either[OAuthError, AuthorizationFlow] =
+    def required(name: String): Either[OAuthError, String] = fields.get(name).filter(_.nonEmpty).toRight(OAuthError.MissingField(name))
+    def optional(name: String): Option[String]             = fields.get(name).filter(_.nonEmpty)
+
+    for
+      url         <- required(UrlField)
+      state       <- required(StateField)
+      redirectUri <- required(RedirectUriField)
+      verifier    <- optional(VerifierField).map(CodeVerifier.parse(_).map(Some(_))).getOrElse(Right(None))
+    yield AuthorizationFlow(url, State(state), RedirectUri(redirectUri), verifier, optional(NonceField).map(Nonce(_)))
+  end fromFields
 
 opaque type AuthorizationCallback = Vector[(String, String)]
 
